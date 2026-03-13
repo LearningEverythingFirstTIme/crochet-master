@@ -21,12 +21,13 @@ export async function GET(request: NextRequest) {
   const cursor = searchParams.get("cursor");
 
   const db = adminDb();
+  // Query only by uid + orderBy createdAt — both have auto-created single-field
+  // indexes, so no composite index is required. Filter isSaved in memory.
   let q = db
     .collection("patterns")
     .where("uid", "==", uid)
-    .where("isSaved", "==", true)
     .orderBy("createdAt", "desc")
-    .limit(pageLimit);
+    .limit(100); // fetch more than needed so in-memory filter leaves enough
 
   if (cursor) {
     const cursorDoc = await db.collection("patterns").doc(cursor).get();
@@ -42,7 +43,11 @@ export async function GET(request: NextRequest) {
     console.error("[/api/patterns] Firestore query failed:", err);
     return new Response("Internal Server Error", { status: 500 });
   }
-  const patterns = snap.docs.map((d) => {
+
+  const allDocs = snap.docs.filter((d) => d.data().isSaved === true);
+  const pageDocs = allDocs.slice(0, pageLimit);
+
+  const patterns = pageDocs.map((d) => {
     const data = d.data();
     return {
       id: d.id,
@@ -60,9 +65,7 @@ export async function GET(request: NextRequest) {
   });
 
   const nextCursor =
-    snap.docs.length === pageLimit
-      ? snap.docs[snap.docs.length - 1].id
-      : null;
+    allDocs.length > pageLimit ? pageDocs[pageDocs.length - 1].id : null;
 
   return Response.json({ patterns, nextCursor });
 }
