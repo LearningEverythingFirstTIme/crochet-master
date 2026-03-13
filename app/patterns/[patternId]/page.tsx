@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { ArrowLeft, Copy, Printer, Check, Trash2 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PatternSectionViewer } from "@/components/patterns/PatternSectionViewer";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { cn } from "@/lib/utils";
 import type { Pattern } from "@/lib/types/pattern";
 
 export default function PatternDetailPage() {
@@ -21,6 +19,10 @@ export default function PatternDetailPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // debounce ref so we batch rapid toggles into a single PATCH
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingCompletedRef = useRef<string[] | null>(null);
 
   useEffect(() => {
     const fetchPattern = async () => {
@@ -34,7 +36,8 @@ export default function PatternDetailPage() {
           return;
         }
         const data = await res.json();
-        setPattern(data);
+        // ensure completedSections is always an array
+        setPattern({ ...data, completedSections: data.completedSections ?? [] });
       } catch (err) {
         console.error(err);
       } finally {
@@ -44,6 +47,45 @@ export default function PatternDetailPage() {
 
     fetchPattern();
   }, [patternId, getIdToken, router]);
+
+  const persistCompleted = useCallback(
+    (completed: string[]) => {
+      // debounce — only fire PATCH 800ms after last toggle
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      pendingCompletedRef.current = completed;
+      saveTimerRef.current = setTimeout(async () => {
+        try {
+          const token = await getIdToken();
+          await fetch(`/api/patterns/${patternId}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ completedSections: pendingCompletedRef.current }),
+          });
+        } catch (err) {
+          console.error("Failed to save progress:", err);
+        }
+      }, 800);
+    },
+    [patternId, getIdToken]
+  );
+
+  const handleToggleSection = useCallback(
+    (heading: string) => {
+      setPattern((prev) => {
+        if (!prev) return prev;
+        const current = prev.completedSections ?? [];
+        const next = current.includes(heading)
+          ? current.filter((h) => h !== heading)
+          : [...current, heading];
+        persistCompleted(next);
+        return { ...prev, completedSections: next };
+      });
+    },
+    [persistCompleted]
+  );
 
   const handleCopy = async () => {
     const text = pattern?.pattern?.rawMarkdown ?? "";
@@ -152,39 +194,12 @@ export default function PatternDetailPage() {
           </div>
         </div>
 
-        {/* Pattern content */}
-        <div
-          className={cn(
-            "rounded-2xl border px-6 py-5 shadow-sm",
-            "prose prose-sm max-w-none",
-            "prose-headings:font-semibold",
-            "prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3 prose-h2:pb-1",
-            "prose-h3:text-base prose-h3:mt-4 prose-h3:mb-2",
-            "prose-p:leading-relaxed",
-            "prose-code:px-1 prose-code:rounded prose-code:text-sm",
-            "prose-table:text-sm"
-          )}
-          style={{
-            backgroundColor: "var(--bg-card)",
-            borderColor: "var(--border)",
-            "--tw-prose-body": "var(--text)",
-            "--tw-prose-headings": "var(--primary)",
-            "--tw-prose-lead": "var(--text-muted)",
-            "--tw-prose-links": "var(--primary)",
-            "--tw-prose-bold": "var(--text)",
-            "--tw-prose-counters": "var(--text-muted)",
-            "--tw-prose-bullets": "var(--primary)",
-            "--tw-prose-hr": "var(--border)",
-            "--tw-prose-code": "var(--primary)",
-            "--tw-prose-pre-bg": "var(--bg-muted)",
-            "--tw-prose-th-borders": "var(--border)",
-            "--tw-prose-td-borders": "var(--border)",
-          } as React.CSSProperties}
-        >
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {rawMarkdown}
-          </ReactMarkdown>
-        </div>
+        {/* Pattern content — sectioned with progress tracking */}
+        <PatternSectionViewer
+          rawMarkdown={rawMarkdown}
+          completedSections={pattern.completedSections ?? []}
+          onToggleSection={handleToggleSection}
+        />
       </div>
     </div>
   );
