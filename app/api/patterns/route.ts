@@ -21,31 +21,27 @@ export async function GET(request: NextRequest) {
   const cursor = searchParams.get("cursor");
 
   const db = adminDb();
-  // Query only by uid + orderBy createdAt — both have auto-created single-field
-  // indexes, so no composite index is required. Filter isSaved in memory.
-  let q = db
-    .collection("patterns")
-    .where("uid", "==", uid)
-    .orderBy("createdAt", "desc")
-    .limit(100); // fetch more than needed so in-memory filter leaves enough
-
-  if (cursor) {
-    const cursorDoc = await db.collection("patterns").doc(cursor).get();
-    if (cursorDoc.exists) {
-      q = q.startAfter(cursorDoc) as typeof q;
-    }
-  }
+  // Query only by uid — single-field index, auto-created by Firestore.
+  // Sort and filter in memory to avoid composite index requirements.
+  const baseQuery = db.collection("patterns").where("uid", "==", uid);
 
   let snap: FirebaseFirestore.QuerySnapshot;
   try {
-    snap = await q.get();
+    snap = await baseQuery.get();
   } catch (err) {
     console.error("[/api/patterns] Firestore query failed:", err);
     return new Response("Internal Server Error", { status: 500 });
   }
 
-  const allDocs = snap.docs.filter((d) => d.data().isSaved === true);
-  const pageDocs = allDocs.slice(0, pageLimit);
+  const saved = snap.docs
+    .filter((d) => d.data().isSaved === true)
+    .sort((a, b) => {
+      const aMs = a.data().createdAt?.toMillis?.() ?? 0;
+      const bMs = b.data().createdAt?.toMillis?.() ?? 0;
+      return bMs - aMs; // newest first
+    });
+
+  const pageDocs = saved.slice(0, pageLimit);
 
   const patterns = pageDocs.map((d) => {
     const data = d.data();
@@ -65,7 +61,7 @@ export async function GET(request: NextRequest) {
   });
 
   const nextCursor =
-    allDocs.length > pageLimit ? pageDocs[pageDocs.length - 1].id : null;
+    saved.length > pageLimit ? pageDocs[pageDocs.length - 1].id : null;
 
   return Response.json({ patterns, nextCursor });
 }
