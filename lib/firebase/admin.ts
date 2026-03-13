@@ -14,12 +14,20 @@ function getAdminApp(): App {
     return adminApp;
   }
 
+  const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
+  if (!privateKey) {
+    throw new Error("FIREBASE_ADMIN_PRIVATE_KEY is not set");
+  }
+  // Vercel/dotenv stores multiline env vars with literal \n — replace with real newlines
+  const resolvedKey = privateKey.replace(/\\n/g, "\n");
+
+  console.log("[firebase/admin] Initializing Admin SDK for project:", process.env.FIREBASE_ADMIN_PROJECT_ID);
+
   adminApp = initializeApp({
     credential: cert({
       projectId: process.env.FIREBASE_ADMIN_PROJECT_ID!,
       clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL!,
-      // Vercel stores multiline env vars with literal \n — must replace with real newlines
-      privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY!.replace(/\\n/g, "\n"),
+      privateKey: resolvedKey,
     }),
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
   });

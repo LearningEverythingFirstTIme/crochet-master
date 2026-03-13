@@ -22,7 +22,8 @@ export async function POST(request: NextRequest) {
     const decoded = await adminAuth().verifyIdToken(token);
     uid = decoded.uid;
     isAnonymous = decoded.firebase?.sign_in_provider === "anonymous";
-  } catch {
+  } catch (err) {
+    console.error("[/api/generate] verifyIdToken failed:", err);
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         const stream = claude.messages.stream({
-          model: "claude-sonnet-4-6",
+          model: "claude-opus-4-5",
           max_tokens: 4096,
           system: SYSTEM_PROMPT,
           messages: buildMessages(input),
