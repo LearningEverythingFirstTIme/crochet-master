@@ -3,9 +3,10 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { getClaudeClient } from "@/lib/claude/client";
 import { SYSTEM_PROMPT, buildMessages } from "@/lib/claude/prompts";
 import type { GenerateRequest } from "@/lib/types/pattern";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 const RATE_LIMIT_AUTH_PER_DAY = 20;
+const COOLDOWN_SECONDS = 60; // 1 request per minute, per user
 
 export async function POST(request: NextRequest) {
   // 1. Verify auth token
@@ -44,6 +45,48 @@ export async function POST(request: NextRequest) {
 
   // 3. Rate limiting
   const db = adminDb();
+
+  // ── 3a. Per-minute throttle (applies to everyone, including anonymous) ──
+  // Uses a Firestore transaction to atomically read + update the last request
+  // timestamp, preventing bursts even if two requests arrive simultaneously.
+  const throttleRef = db.collection("rate_limits").doc(uid);
+
+  const throttleResult = await db.runTransaction(async (txn) => {
+    const doc = await txn.get(throttleRef);
+    const now = Date.now();
+    const lastMs: number =
+      doc.exists && doc.data()?.lastRequestAt instanceof Timestamp
+        ? (doc.data()!.lastRequestAt as Timestamp).toMillis()
+        : 0;
+
+    const elapsedSeconds = (now - lastMs) / 1000;
+
+    if (elapsedSeconds < COOLDOWN_SECONDS) {
+      return { allowed: false, retryAfter: Math.ceil(COOLDOWN_SECONDS - elapsedSeconds) };
+    }
+
+    txn.set(throttleRef, { lastRequestAt: Timestamp.fromMillis(now), uid }, { merge: true });
+    return { allowed: true, retryAfter: 0 };
+  });
+
+  if (!throttleResult.allowed) {
+    return new Response(
+      JSON.stringify({
+        error: "rate_limit_cooldown",
+        message: `Please wait ${throttleResult.retryAfter} second${throttleResult.retryAfter === 1 ? "" : "s"} before generating another pattern.`,
+        retryAfter: throttleResult.retryAfter,
+      }),
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "application/json",
+          "Retry-After": String(throttleResult.retryAfter),
+        },
+      }
+    );
+  }
+
+  // ── 3b. Daily quota ──
   const today = new Date().toISOString().split("T")[0];
   const sessionRef = db.collection("sessions").doc(`${uid}_${today}`);
 
@@ -52,11 +95,11 @@ export async function POST(request: NextRequest) {
     ? (sessionSnap.data()?.generationCount ?? 0)
     : 0;
 
-  const rateLimit = isAnonymous ? 3 : RATE_LIMIT_AUTH_PER_DAY;
-  if (generationCount >= rateLimit) {
+  const dailyLimit = isAnonymous ? 3 : RATE_LIMIT_AUTH_PER_DAY;
+  if (generationCount >= dailyLimit) {
     return new Response(
       JSON.stringify({
-        error: "rate_limit",
+        error: "rate_limit_daily",
         message: isAnonymous
           ? "Free limit reached. Sign in to generate more patterns."
           : "Daily limit reached. Try again tomorrow.",
