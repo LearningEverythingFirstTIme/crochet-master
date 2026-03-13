@@ -35,7 +35,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const snap = await q.get();
+  let snap: FirebaseFirestore.QuerySnapshot;
+  try {
+    snap = await q.get();
+  } catch (err) {
+    console.error("[/api/patterns] Firestore query failed:", err);
+    return new Response("Internal Server Error", { status: 500 });
+  }
   const patterns = snap.docs.map((d) => {
     const data = d.data();
     return {
