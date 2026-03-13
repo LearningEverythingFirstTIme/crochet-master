@@ -4,21 +4,26 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)] disabled:pointer-events-none disabled:opacity-40 cursor-pointer",
   {
     variants: {
       variant: {
-        default: "bg-rose-500 text-white hover:bg-rose-600 shadow-sm",
-        outline: "border border-rose-300 bg-white text-rose-600 hover:bg-rose-50",
-        ghost: "text-rose-600 hover:bg-rose-50",
-        secondary: "bg-rose-100 text-rose-700 hover:bg-rose-200",
-        destructive: "bg-red-500 text-white hover:bg-red-600",
+        default:
+          "bg-[var(--primary)] text-white shadow-sm hover:bg-[var(--primary-hover)] active:scale-[0.98]",
+        outline:
+          "border border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text)] hover:bg-[var(--bg-muted)] hover:border-[var(--primary)]",
+        ghost:
+          "text-[var(--text-muted)] hover:bg-[var(--bg-muted)] hover:text-[var(--text)]",
+        secondary:
+          "bg-[var(--primary-muted)] text-[var(--primary)] hover:opacity-80",
+        destructive:
+          "bg-red-500 text-white hover:bg-red-600 shadow-sm",
       },
       size: {
         default: "h-10 px-4 py-2",
-        sm: "h-8 px-3 text-xs",
-        lg: "h-12 px-6 text-base",
-        icon: "h-10 w-10",
+        sm:      "h-8 px-3 text-xs",
+        lg:      "h-12 px-6 text-base",
+        icon:    "h-10 w-10",
       },
     },
     defaultVariants: {

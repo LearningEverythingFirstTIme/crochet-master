@@ -30,17 +30,33 @@ export function SaveBanner({ patternId, isAnonymous, onSave, onSignIn }: SaveBan
 
   if (state === "saved") {
     return (
-      <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+      <div
+        className="flex items-center gap-2 rounded-xl border px-4 py-3 text-sm"
+        style={{
+          backgroundColor: "var(--success-bg)",
+          borderColor: "var(--success-border)",
+          color: "var(--success)",
+        }}
+      >
         <Check className="h-4 w-4" />
         <span className="font-medium">Pattern saved!</span>
-        <span className="text-green-600">You can find it in My Patterns.</span>
+        <span>You can find it in My Patterns.</span>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3">
-      <div className="flex items-center gap-2 text-sm text-rose-700">
+    <div
+      className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3"
+      style={{
+        backgroundColor: "var(--primary-muted)",
+        borderColor: "var(--primary)",
+      }}
+    >
+      <div
+        className="flex items-center gap-2 text-sm"
+        style={{ color: "var(--primary)" }}
+      >
         <Bookmark className="h-4 w-4 flex-shrink-0" />
         <span>
           {isAnonymous

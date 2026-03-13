@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 
 const difficultyColors: Record<string, string> = {
-  beginner: "bg-green-100 text-green-700",
-  intermediate: "bg-yellow-100 text-yellow-700",
-  advanced: "bg-red-100 text-red-700",
+  beginner:     "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  intermediate: "bg-amber-100   text-amber-700   dark:bg-amber-900/40   dark:text-amber-300",
+  advanced:     "bg-red-100     text-red-700     dark:bg-red-900/40     dark:text-red-300",
 };
 
 interface BadgeProps {
@@ -16,8 +16,8 @@ interface BadgeProps {
 export function Badge({ children, variant = "default", difficulty, className }: BadgeProps) {
   const colorClass =
     variant === "difficulty" && difficulty
-      ? difficultyColors[difficulty] ?? "bg-gray-100 text-gray-700"
-      : "bg-rose-100 text-rose-700";
+      ? difficultyColors[difficulty] ?? "bg-[var(--bg-muted)] text-[var(--text-muted)]"
+      : "bg-[var(--primary-muted)] text-[var(--primary)]";
 
   return (
     <span

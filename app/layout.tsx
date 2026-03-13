@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
+import { Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ThemeProvider } from "@/components/ui/ThemeProvider";
 
-const geist = Geist({ subsets: ["latin"] });
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "CrochetAI — Generate Crochet Patterns Instantly",
@@ -17,9 +25,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${geist.className} bg-rose-50/30 min-h-screen antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geist.variable} ${playfair.variable}`}
+    >
+      <body className="font-sans min-h-screen antialiased">
+        <ThemeProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

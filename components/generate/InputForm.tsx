@@ -12,13 +12,19 @@ interface InputFormProps {
 }
 
 const YARN_WEIGHTS: { value: YarnWeight; label: string }[] = [
-  { value: "lace", label: "Lace (0)" },
-  { value: "fingering", label: "Fingering (1)" },
-  { value: "sport", label: "Sport (2)" },
-  { value: "dk", label: "DK (3)" },
-  { value: "worsted", label: "Worsted (4)" },
-  { value: "bulky", label: "Bulky (5)" },
+  { value: "lace",        label: "Lace (0)" },
+  { value: "fingering",   label: "Fingering (1)" },
+  { value: "sport",       label: "Sport (2)" },
+  { value: "dk",          label: "DK (3)" },
+  { value: "worsted",     label: "Worsted (4)" },
+  { value: "bulky",       label: "Bulky (5)" },
   { value: "super-bulky", label: "Super Bulky (6)" },
+];
+
+const SKILL_LEVELS: { value: SkillLevel; label: string; desc: string }[] = [
+  { value: "beginner",     label: "Beginner",     desc: "Basic stitches only" },
+  { value: "intermediate", label: "Intermediate", desc: "Some shaping" },
+  { value: "advanced",     label: "Advanced",     desc: "Complex techniques" },
 ];
 
 export function InputForm({ onSubmit, isLoading }: InputFormProps) {
@@ -49,19 +55,18 @@ export function InputForm({ onSubmit, isLoading }: InputFormProps) {
     onSubmit(input);
   };
 
-  const SKILL_LEVELS: { value: SkillLevel; label: string; desc: string }[] = [
-    { value: "beginner", label: "Beginner", desc: "Basic stitches only" },
-    { value: "intermediate", label: "Intermediate", desc: "Some shaping" },
-    { value: "advanced", label: "Advanced", desc: "Complex techniques" },
-  ];
+  const labelClass = "block text-sm font-semibold mb-1.5";
+  const optionalClass = "font-normal text-xs";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Description textarea */}
+
+      {/* Description */}
       <div>
         <label
           htmlFor="description"
-          className="block text-sm font-semibold text-gray-700 mb-1.5"
+          className={labelClass}
+          style={{ color: "var(--text)" }}
         >
           What would you like to crochet?
         </label>
@@ -71,41 +76,56 @@ export function InputForm({ onSubmit, isLoading }: InputFormProps) {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="e.g. a small amigurumi bear with a bow tie, a cozy winter hat for a toddler, a granny square tote bag..."
           rows={3}
-          className="w-full rounded-xl border border-rose-200 bg-white px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-transparent resize-none"
+          className="w-full rounded-xl border px-4 py-3 text-sm placeholder:text-[var(--text-placeholder)] focus:outline-none focus:ring-2 resize-none transition-colors"
+          style={{
+            backgroundColor: "var(--bg-input)",
+            borderColor: "var(--border)",
+            color: "var(--text)",
+            "--tw-ring-color": "var(--primary)",
+          } as React.CSSProperties}
         />
       </div>
 
       {/* Image upload */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-          Or upload a photo <span className="text-gray-400 font-normal">(optional)</span>
+        <label className={labelClass} style={{ color: "var(--text)" }}>
+          Or upload a photo{" "}
+          <span className={optionalClass} style={{ color: "var(--text-muted)" }}>
+            (optional)
+          </span>
         </label>
-        <ImageUploader
-          onImageReady={(data) => setImage(data)}
-        />
+        <ImageUploader onImageReady={(data) => setImage(data)} />
       </div>
 
       {/* Skill level */}
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Skill level <span className="text-gray-400 font-normal">(optional)</span>
+        <label className={labelClass} style={{ color: "var(--text)" }}>
+          Skill level{" "}
+          <span className={optionalClass} style={{ color: "var(--text-muted)" }}>
+            (optional)
+          </span>
         </label>
         <div className="flex gap-2 flex-wrap">
-          {SKILL_LEVELS.map(({ value, label, desc }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setSkillLevel(skillLevel === value ? "" : value)}
-              className={`rounded-lg border px-4 py-2 text-sm transition-colors ${
-                skillLevel === value
-                  ? "border-rose-400 bg-rose-50 text-rose-700 font-semibold"
-                  : "border-gray-200 bg-white text-gray-600 hover:border-rose-300"
-              }`}
-            >
-              <div className="font-medium">{label}</div>
-              <div className="text-xs opacity-70">{desc}</div>
-            </button>
-          ))}
+          {SKILL_LEVELS.map(({ value, label, desc }) => {
+            const selected = skillLevel === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSkillLevel(selected ? "" : value)}
+                className="rounded-xl border px-4 py-2 text-sm text-left transition-all duration-200"
+                style={{
+                  backgroundColor: selected ? "var(--primary-muted)" : "var(--bg-input)",
+                  borderColor: selected ? "var(--primary)" : "var(--border)",
+                  color: selected ? "var(--primary)" : "var(--text)",
+                  boxShadow: selected ? "0 0 0 1px var(--primary)" : "none",
+                }}
+              >
+                <div className="font-semibold">{label}</div>
+                <div className="text-xs opacity-60">{desc}</div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -113,15 +133,25 @@ export function InputForm({ onSubmit, isLoading }: InputFormProps) {
       <div>
         <label
           htmlFor="yarnWeight"
-          className="block text-sm font-semibold text-gray-700 mb-1.5"
+          className={labelClass}
+          style={{ color: "var(--text)" }}
         >
-          Yarn weight <span className="text-gray-400 font-normal">(optional)</span>
+          Yarn weight{" "}
+          <span className={optionalClass} style={{ color: "var(--text-muted)" }}>
+            (optional)
+          </span>
         </label>
         <select
           id="yarnWeight"
           value={yarnWeight}
           onChange={(e) => setYarnWeight(e.target.value as YarnWeight | "")}
-          className="rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+          className="rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors"
+          style={{
+            backgroundColor: "var(--bg-input)",
+            borderColor: "var(--border)",
+            color: "var(--text)",
+            "--tw-ring-color": "var(--primary)",
+          } as React.CSSProperties}
         >
           <option value="">Any weight</option>
           {YARN_WEIGHTS.map(({ value, label }) => (

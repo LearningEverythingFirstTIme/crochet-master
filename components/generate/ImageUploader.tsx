@@ -95,14 +95,20 @@ export function ImageUploader({ onImageReady }: ImageUploaderProps) {
         <img
           src={preview}
           alt="Upload preview"
-          className="h-40 w-40 rounded-xl object-cover border-2 border-rose-200"
+          className="h-40 w-40 rounded-xl object-cover border-2"
+          style={{ borderColor: "var(--border-strong)" }}
         />
         <button
           onClick={clearImage}
-          className="absolute -top-2 -right-2 rounded-full bg-white border border-gray-200 shadow-sm p-1 hover:bg-gray-50"
+          className="absolute -top-2 -right-2 rounded-full border shadow-sm p-1 transition-colors"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            borderColor: "var(--border)",
+            color: "var(--text-muted)",
+          }}
           type="button"
         >
-          <X className="h-3.5 w-3.5 text-gray-500" />
+          <X className="h-3.5 w-3.5" />
         </button>
       </div>
     );
@@ -111,33 +117,38 @@ export function ImageUploader({ onImageReady }: ImageUploaderProps) {
   return (
     <div
       {...getRootProps()}
-      className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 cursor-pointer transition-colors",
-        isDragActive
-          ? "border-rose-400 bg-rose-50"
-          : "border-rose-200 hover:border-rose-300 hover:bg-rose-50/50"
-      )}
+      className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 cursor-pointer transition-all duration-200"
+      style={{
+        borderColor: isDragActive ? "var(--primary)" : "var(--border-strong)",
+        backgroundColor: isDragActive ? "var(--primary-muted)" : "transparent",
+      }}
     >
       <input {...getInputProps()} />
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-rose-400">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-rose-300 border-t-rose-500" />
-          Processing image...
+        <div className="flex items-center gap-2 text-sm" style={{ color: "var(--primary)" }}>
+          <div
+            className="h-4 w-4 animate-spin rounded-full border-2"
+            style={{ borderColor: "var(--border-strong)", borderTopColor: "var(--primary)" }}
+          />
+          Processing image…
         </div>
       ) : (
         <>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: "var(--primary-muted)" }}
+          >
             {isDragActive ? (
-              <Upload className="h-5 w-5 text-rose-500" />
+              <Upload className="h-5 w-5" style={{ color: "var(--primary)" }} />
             ) : (
-              <ImageIcon className="h-5 w-5 text-rose-400" />
+              <ImageIcon className="h-5 w-5" style={{ color: "var(--primary)" }} />
             )}
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium text-rose-600">
+            <p className="text-sm font-medium" style={{ color: "var(--primary)" }}>
               {isDragActive ? "Drop image here" : "Upload a photo"}
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
               JPEG, PNG, WebP — optional
             </p>
           </div>

@@ -40,14 +40,22 @@ export default function PatternsPage() {
   }, [user, loading, isAnonymous, getIdToken]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: "var(--bg)" }}
+    >
       <Header />
 
       <div className="flex-1 mx-auto w-full max-w-3xl px-4 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Patterns</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1
+              className="text-2xl font-bold"
+              style={{ color: "var(--text)", fontFamily: "var(--font-playfair)" }}
+            >
+              My Patterns
+            </h1>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
               Your saved crochet patterns
             </p>
           </div>
@@ -64,25 +72,48 @@ export default function PatternsPage() {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-36 rounded-2xl bg-rose-50 animate-pulse"
+                className="h-36 rounded-2xl skeleton"
               />
             ))}
           </div>
         ) : isAnonymous ? (
-          <div className="text-center py-20 text-gray-500">
-            <BookOpen className="h-10 w-10 mx-auto mb-3 text-rose-200" />
-            <p className="font-medium">Sign in to view your saved patterns</p>
-            <p className="text-sm mt-1">
+          <div className="text-center py-20">
+            <div
+              className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: "var(--primary-muted)" }}
+            >
+              <BookOpen className="h-6 w-6" style={{ color: "var(--primary)" }} />
+            </div>
+            <p className="font-medium" style={{ color: "var(--text)" }}>
+              Sign in to view your saved patterns
+            </p>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
               Your patterns are saved to your account.
             </p>
           </div>
         ) : error ? (
-          <p className="text-red-500 text-sm">{error}</p>
+          <p
+            className="text-sm rounded-xl px-4 py-3 border"
+            style={{
+              color: "var(--error)",
+              backgroundColor: "var(--error-bg)",
+              borderColor: "var(--error-border)",
+            }}
+          >
+            {error}
+          </p>
         ) : patterns.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
-            <BookOpen className="h-10 w-10 mx-auto mb-3 text-rose-200" />
-            <p className="font-medium">No saved patterns yet</p>
-            <p className="text-sm mt-1">
+          <div className="text-center py-20">
+            <div
+              className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: "var(--primary-muted)" }}
+            >
+              <BookOpen className="h-6 w-6" style={{ color: "var(--primary)" }} />
+            </div>
+            <p className="font-medium" style={{ color: "var(--text)" }}>
+              No saved patterns yet
+            </p>
+            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
               Generate a pattern and save it to see it here.
             </p>
             <Button asChild className="mt-4">
