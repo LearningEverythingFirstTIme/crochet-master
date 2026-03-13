@@ -53,6 +53,7 @@ export interface Pattern {
   isSaved: boolean;
   isPublic: boolean;
   pattern: PatternData | null;
+  completedSections: string[];
 }
 
 export interface PatternSummary {
