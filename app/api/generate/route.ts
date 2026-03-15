@@ -125,14 +125,6 @@ export async function POST(request: NextRequest) {
 
   // 6. Stream Claude response
   const claude = getClaudeClient();
-  
-  // Use a mutable object to ensure accumulated text is captured correctly
-  const streamState = { 
-    accumulatedMarkdown: "", 
-    chunkCount: 0,
-    patternId,
-    title
-  };
 
   const readableStream = new ReadableStream({
     async start(controller) {

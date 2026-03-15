@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { InputForm } from "@/components/generate/InputForm";
 import { PatternStream } from "@/components/generate/PatternStream";
@@ -11,34 +12,22 @@ import type { GenerateRequest } from "@/lib/types/pattern";
 import { Wand2 } from "lucide-react";
 
 export default function GeneratePage() {
-  const { getIdToken, isAnonymous, signInWithGoogle } = useAuth();
-  const { patternText, patternId, isStreaming, isContinuing, error, generate } =
-    usePatternStream(getIdToken);
+  const router = useRouter();
+  const { getIdToken } = useAuth();
+  const { patternText, isStreaming, error, generate } = usePatternStream(getIdToken);
+  
+  // Track the input used for generation (needed for save)
+  const [lastInput, setLastInput] = useState<GenerateRequest | null>(null);
 
   const handleSubmit = useCallback(
     (input: GenerateRequest) => {
+      setLastInput(input);
       generate(input);
     },
     [generate]
   );
 
-  const handleSave = useCallback(
-    async (id: string) => {
-      const token = await getIdToken();
-      const res = await fetch("/api/patterns", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ patternId: id }),
-      });
-      if (!res.ok) throw new Error("Failed to save pattern");
-    },
-    [getIdToken]
-  );
-
-  const showSaveBanner = patternText.length > 0 && !isStreaming && !error;
+  const showSaveBanner = patternText.length > 0 && !isStreaming && !error && lastInput;
 
   return (
     <div
@@ -81,12 +70,12 @@ export default function GeneratePage() {
         </div>
 
         {/* Save banner */}
-        {showSaveBanner && patternId && (
+        {showSaveBanner && (
           <SaveBanner
-            patternId={patternId}
-            isAnonymous={isAnonymous}
-            onSave={handleSave}
-            onSignIn={signInWithGoogle}
+            patternText={patternText}
+            input={lastInput!}
+            getIdToken={getIdToken}
+            onSaved={() => router.push("/patterns")}
           />
         )}
 
