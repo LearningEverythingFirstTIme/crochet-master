@@ -94,7 +94,6 @@ export default function GeneratePage() {
         <PatternStream
           text={patternText}
           isStreaming={isStreaming}
-          isContinuing={isContinuing}
           error={error}
         />
       </div>

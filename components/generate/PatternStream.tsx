@@ -9,11 +9,10 @@ import { cn } from "@/lib/utils";
 interface PatternStreamProps {
   text: string;
   isStreaming: boolean;
-  isContinuing?: boolean;
   error: string | null;
 }
 
-export function PatternStream({ text, isStreaming, isContinuing, error }: PatternStreamProps) {
+export function PatternStream({ text, isStreaming, error }: PatternStreamProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll while streaming
@@ -62,15 +61,6 @@ export function PatternStream({ text, isStreaming, isContinuing, error }: Patter
           >
             <Loader2 className="h-3 w-3 animate-spin" />
             Generating…
-          </span>
-        )}
-        {!isStreaming && isContinuing && (
-          <span
-            className="ml-auto flex items-center gap-1.5 text-xs"
-            style={{ color: "var(--primary)" }}
-          >
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Continuing…
           </span>
         )}
       </div>

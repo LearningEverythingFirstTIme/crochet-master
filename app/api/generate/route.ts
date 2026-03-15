@@ -108,30 +108,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 4. Create a Firestore draft document
-  const patternRef = input.patternId
-    ? db.collection("patterns").doc(input.patternId)
-    : db.collection("patterns").doc();
-
-  const patternId = patternRef.id;
-  const title = deriveTitle(input);
-
-  await patternRef.set(
-    {
-      uid,
-      title,
-      description: input.description ?? "",
-      sourceType: input.image ? "image" : "text",
-      sourceImageUrl: null,
-      status: "generating",
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      isSaved: false,
-      isPublic: false,
-      pattern: null,
-    },
-    { merge: true }
-  );
+  // 4. No Firestore doc created during generation
+  // Pattern stays client-side until user explicitly clicks Save
+  // Just return the generated pattern in the stream
 
   // 5. Increment session counter (don't await — fire and forget)
   sessionRef.set(
@@ -166,52 +145,19 @@ export async function POST(request: NextRequest) {
         });
 
         for await (const chunk of stream) {
-          streamState.chunkCount++;
-          if (streamState.chunkCount % 50 === 0) {
-            console.log(`[Generate] Pattern ${streamState.patternId}: ${streamState.chunkCount} chunks, ${streamState.accumulatedMarkdown.length} chars`);
-          }
           if (
             chunk.type === "content_block_delta" &&
             chunk.delta.type === "text_delta"
           ) {
             const text = chunk.delta.text;
-            if (text) {
-              streamState.accumulatedMarkdown += text;
-              controller.enqueue(new TextEncoder().encode(text));
-            }
+            controller.enqueue(new TextEncoder().encode(text));
           }
-        }
-
-        console.log(`[Generate] Stream complete for ${streamState.patternId}: ${streamState.chunkCount} chunks, ${streamState.accumulatedMarkdown.length} chars`);
-
-        // 7. Update Firestore with completed pattern
-        // CRITICAL: Must await this before closing stream to ensure it completes
-        console.log(`[Generate] Saving pattern ${streamState.patternId} (${streamState.accumulatedMarkdown.length} chars)`);
-        
-        try {
-          const extractedTitle = extractTitle(streamState.accumulatedMarkdown);
-          console.log(`[Generate] Extracted title: ${extractedTitle ?? 'none'}, using: ${extractedTitle ?? streamState.title}`);
-          
-          await patternRef.update({
-            status: "complete",
-            "pattern.rawMarkdown": streamState.accumulatedMarkdown,
-            title: extractedTitle ?? streamState.title,
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-          console.log(`[Generate] Firestore saved SUCCESS: ${streamState.patternId}`);
-        } catch (err) {
-          console.error(`[Generate] Firestore save FAILED for ${streamState.patternId}:`, err);
-          await patternRef.update({ 
-            status: "error", 
-            updatedAt: FieldValue.serverTimestamp() 
-          }).catch(console.error);
         }
 
         controller.close();
       } catch (err) {
         console.error("[Generate] Stream error:", err);
         controller.error(err);
-        patternRef.update({ status: "error", updatedAt: FieldValue.serverTimestamp() }).catch(console.error);
       }
     },
   });
@@ -220,7 +166,6 @@ export async function POST(request: NextRequest) {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache",
-      "X-Pattern-Id": patternId,
     },
   });
 }
