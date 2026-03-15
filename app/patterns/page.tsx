@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sparkles, BookOpen } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { PatternCard } from "@/components/patterns/PatternCard";
+import { SignInCard } from "@/components/auth/SignInCard";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/hooks/useAuth";
 import type { PatternSummary } from "@/lib/types/pattern";
@@ -77,19 +78,8 @@ export default function PatternsPage() {
             ))}
           </div>
         ) : isAnonymous ? (
-          <div className="text-center py-20">
-            <div
-              className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl"
-              style={{ backgroundColor: "var(--primary-muted)" }}
-            >
-              <BookOpen className="h-6 w-6" style={{ color: "var(--primary)" }} />
-            </div>
-            <p className="font-medium" style={{ color: "var(--text)" }}>
-              Sign in to view your saved patterns
-            </p>
-            <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-              Your patterns are saved to your account.
-            </p>
+          <div className="py-12">
+            <SignInCard className="max-w-md mx-auto" />
           </div>
         ) : error ? (
           <p

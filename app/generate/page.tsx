@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { InputForm } from "@/components/generate/InputForm";
 import { PatternStream } from "@/components/generate/PatternStream";
 import { SaveBanner } from "@/components/generate/SaveBanner";
+import { SignInCard } from "@/components/auth/SignInCard";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { usePatternStream } from "@/lib/hooks/usePatternStream";
 import type { GenerateRequest } from "@/lib/types/pattern";
@@ -13,7 +14,7 @@ import { Wand2 } from "lucide-react";
 
 export default function GeneratePage() {
   const router = useRouter();
-  const { getIdToken } = useAuth();
+  const { getIdToken, isAnonymous } = useAuth();
   const { patternText, isStreaming, error, generate } = usePatternStream(getIdToken);
   
   // Track the input used for generation (needed for save)
@@ -68,6 +69,11 @@ export default function GeneratePage() {
         >
           <InputForm onSubmit={handleSubmit} isLoading={isStreaming} />
         </div>
+
+        {/* Sign in prompt for anonymous users */}
+        {isAnonymous && !patternText && (
+          <SignInCard />
+        )}
 
         {/* Save banner */}
         {showSaveBanner && (
