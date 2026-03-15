@@ -101,10 +101,15 @@ export function usePatternStream(getIdToken: () => Promise<string>) {
         if (!response.ok) {
           let errorMessage = "Failed to generate pattern";
           try {
-            const errData = await response.json();
-            errorMessage = errData.message ?? errorMessage;
+            const contentType = response.headers.get("content-type");
+            if (contentType?.includes("application/json")) {
+              const errData = await response.json();
+              errorMessage = errData.message ?? errorMessage;
+            } else {
+              errorMessage = await response.text() || errorMessage;
+            }
           } catch {
-            errorMessage = await response.text() || errorMessage;
+            // If reading fails, use default message
           }
           setState((s) => ({ ...s, isStreaming: false, error: errorMessage }));
           return;
