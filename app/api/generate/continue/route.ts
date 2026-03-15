@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
         controller.enqueue(new TextEncoder().encode("\n\n---CONTINUING---\n\n"));
 
         const stream = claude.messages.stream({
-          model: "claude-sonnet-4-6-20250801",
+          model: "claude-3-5-sonnet-20241022",
           max_tokens: 8000,
           system: SYSTEM_PROMPT,
           messages: [
