@@ -8,7 +8,12 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 const RATE_LIMIT_AUTH_PER_DAY = 20;
 const COOLDOWN_SECONDS = 60; // 1 request per minute, per user
 
-export async function POST(request: NextRequest) {
+// Extend NextRequest to include waitUntil for Vercel
+interface VercelNextRequest extends NextRequest {
+  waitUntil?: (promise: Promise<unknown>) => void;
+}
+
+export async function POST(request: VercelNextRequest) {
   // 1. Verify auth token
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -171,23 +176,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Small delay to ensure all chunks are processed
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        console.log(`[Generate] Stream complete: ${chunkCount} chunks, ${accumulatedMarkdown.length} chars`);
-        controller.close();
-
         // 7. Update Firestore with completed pattern
-        // Check document size (Firestore limit is 1MB)
-        const docSize = new TextEncoder().encode(accumulatedMarkdown).length;
-        console.log(`[Generate] Pattern size: ${docSize} bytes (${(docSize / 1024 / 1024).toFixed(2)} MB)`);
-        
-        if (docSize > 900000) { // Warn if approaching 1MB
-          console.warn(`[Generate] Pattern ${patternId} is large (${docSize} bytes), may hit Firestore limit`);
-        }
-        
-        // Use await with retry logic for long patterns
-        const updatePattern = async (retries = 3): Promise<void> => {
+        // Use waitUntil to keep function alive for background Firestore write
+        const saveToFirestore = async () => {
           try {
             await patternRef.update({
               status: "complete",
@@ -195,27 +186,29 @@ export async function POST(request: NextRequest) {
               title: extractTitle(accumulatedMarkdown) ?? title,
               updatedAt: FieldValue.serverTimestamp(),
             });
-            console.log(`[Generate] Firestore update successful: ${patternId}`);
+            console.log(`[Generate] Firestore saved: ${patternId}, ${accumulatedMarkdown.length} chars`);
           } catch (err) {
-            console.error(`[Generate] Firestore update failed (retries left: ${retries}):`, err);
-            if (retries > 0) {
-              await new Promise(r => setTimeout(r, 1000));
-              return updatePattern(retries - 1);
-            }
-            // If all retries fail, at least log it properly
-            console.error(`[Generate] Failed to save pattern ${patternId} after all retries`);
+            console.error(`[Generate] Firestore save failed:`, err);
+            // Mark as error but don't fail the stream
+            await patternRef.update({ 
+              status: "error", 
+              updatedAt: FieldValue.serverTimestamp() 
+            }).catch(console.error);
           }
         };
-        
-        await updatePattern();
+
+        // Use waitUntil if available (Vercel), otherwise await
+        if (request.waitUntil) {
+          request.waitUntil(saveToFirestore());
+        } else {
+          await saveToFirestore();
+        }
+
+        controller.close();
       } catch (err) {
         console.error("Stream error:", err);
         controller.error(err);
-        try {
-          await patternRef.update({ status: "error", updatedAt: FieldValue.serverTimestamp() });
-        } catch (updateErr) {
-          console.error("Failed to update error status:", updateErr);
-        }
+        patternRef.update({ status: "error", updatedAt: FieldValue.serverTimestamp() }).catch(console.error);
       }
     },
   });
