@@ -178,29 +178,40 @@ export async function POST(request: VercelNextRequest) {
 
         // 7. Update Firestore with completed pattern
         // Use waitUntil to keep function alive for background Firestore write
+        console.log(`[Generate] Stream ended. waitUntil available: ${!!request.waitUntil}`);
+        console.log(`[Generate] Accumulated: ${accumulatedMarkdown.length} chars, ${chunkCount} chunks`);
+        
         const saveToFirestore = async () => {
+          console.log(`[Generate] Starting Firestore save for ${patternId}`);
           try {
-            await patternRef.update({
+            const updateData = {
               status: "complete",
               "pattern.rawMarkdown": accumulatedMarkdown,
               title: extractTitle(accumulatedMarkdown) ?? title,
               updatedAt: FieldValue.serverTimestamp(),
-            });
-            console.log(`[Generate] Firestore saved: ${patternId}, ${accumulatedMarkdown.length} chars`);
+            };
+            console.log(`[Generate] Updating with title: ${updateData.title}`);
+            await patternRef.update(updateData);
+            console.log(`[Generate] Firestore saved SUCCESS: ${patternId}`);
           } catch (err) {
-            console.error(`[Generate] Firestore save failed:`, err);
-            // Mark as error but don't fail the stream
-            await patternRef.update({ 
-              status: "error", 
-              updatedAt: FieldValue.serverTimestamp() 
-            }).catch(console.error);
+            console.error(`[Generate] Firestore save FAILED:`, err);
+            try {
+              await patternRef.update({ 
+                status: "error", 
+                updatedAt: FieldValue.serverTimestamp() 
+              });
+            } catch (e) {
+              console.error(`[Generate] Failed to mark error status:`, e);
+            }
           }
         };
 
         // Use waitUntil if available (Vercel), otherwise await
         if (request.waitUntil) {
+          console.log(`[Generate] Using waitUntil for background save`);
           request.waitUntil(saveToFirestore());
         } else {
+          console.log(`[Generate] waitUntil not available, awaiting save`);
           await saveToFirestore();
         }
 
