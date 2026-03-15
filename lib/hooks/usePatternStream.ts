@@ -51,14 +51,21 @@ export function usePatternStream(getIdToken: () => Promise<string>) {
 
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
+        let receivedLength = 0;
 
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log(`[usePatternStream] Stream complete: ${receivedLength} bytes received`);
+            break;
+          }
+          receivedLength += value?.length || 0;
           const chunk = decoder.decode(value, { stream: true });
           setState((s) => ({ ...s, patternText: s.patternText + chunk }));
         }
 
+        // Small delay to ensure final render
+        await new Promise(resolve => setTimeout(resolve, 100));
         setState((s) => ({ ...s, isStreaming: false }));
       } catch (err) {
         const message = err instanceof Error ? err.message : "An unexpected error occurred";

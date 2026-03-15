@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
   // 6. Stream Claude response
   const claude = getClaudeClient();
   let accumulatedMarkdown = "";
+  let chunkCount = 0;
 
   const readableStream = new ReadableStream({
     async start(controller) {
@@ -159,6 +160,7 @@ export async function POST(request: NextRequest) {
         });
 
         for await (const chunk of stream) {
+          chunkCount++;
           if (
             chunk.type === "content_block_delta" &&
             chunk.delta.type === "text_delta"
@@ -169,6 +171,10 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Small delay to ensure all chunks are processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        console.log(`[Generate] Stream complete: ${chunkCount} chunks, ${accumulatedMarkdown.length} chars`);
         controller.close();
 
         // 7. Update Firestore with completed pattern (background, don't block stream)
