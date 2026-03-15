@@ -9,8 +9,11 @@ import {
 import {
   signInAnonymously,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   linkWithPopup,
+  linkWithRedirect,
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
@@ -26,12 +29,34 @@ interface AuthContextValue {
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
+// Detect if user is on a mobile device
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
+
+    // Handle redirect result first (for mobile sign-in)
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          setUser(result.user);
+        }
+      })
+      .catch((err) => {
+        console.error("Redirect sign-in error:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -54,28 +79,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     const auth = getFirebaseAuth();
     const provider = new GoogleAuthProvider();
+    const isMobile = isMobileDevice();
 
     if (user?.isAnonymous) {
       // Upgrade anonymous account to Google account, preserving data
       try {
-        const result = await linkWithPopup(user, provider);
-        setUser(result.user);
-      } catch (err: unknown) {
-        // If account already exists, sign in normally
-        if (
-          err instanceof Error &&
-          "code" in err &&
-          (err as { code: string }).code === "auth/credential-already-in-use"
-        ) {
-          const result = await signInWithPopup(auth, provider);
+        if (isMobile) {
+          // Use redirect for mobile
+          await linkWithRedirect(user, provider);
+          // Page will redirect, no need to set user
+        } else {
+          // Use popup for desktop
+          const result = await linkWithPopup(user, provider);
           setUser(result.user);
+        }
+      } catch (err: unknown) {
+        const errorCode = (err as { code?: string }).code;
+        // If account already exists, sign in normally
+        if (errorCode === "auth/credential-already-in-use") {
+          if (isMobile) {
+            await signInWithRedirect(auth, provider);
+          } else {
+            const result = await signInWithPopup(auth, provider);
+            setUser(result.user);
+          }
+        } else if (errorCode === "auth/operation-not-supported-in-this-environment") {
+          // Fallback to redirect if popup fails
+          await signInWithRedirect(auth, provider);
         } else {
           throw err;
         }
       }
     } else {
-      const result = await signInWithPopup(auth, provider);
-      setUser(result.user);
+      // Not anonymous - regular sign in
+      if (isMobile) {
+        await signInWithRedirect(auth, provider);
+      } else {
+        const result = await signInWithPopup(auth, provider);
+        setUser(result.user);
+      }
     }
   };
 
