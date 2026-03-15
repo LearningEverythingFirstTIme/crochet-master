@@ -179,9 +179,8 @@ export function MultiSectionCounter({
     }
   };
 
-  // Setup Modal
-  if (showSetup || (!hasStarted && sections.length === 0)) {
-    const isSetupOpen = showSetup || !hasStarted;
+  // Setup Modal - only show when explicitly opened
+  if (showSetup) {
     
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -191,15 +190,13 @@ export function MultiSectionCounter({
               <Layers className="inline-block h-5 w-5 mr-2" />
               Set Up Sections
             </h3>
-            {hasStarted && (
-              <button
-                onClick={closeSetup}
-                className="p-1 rounded-lg hover:bg-[var(--bg-muted)]"
-                style={{ color: "var(--text-muted)" }}
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
+            <button
+              onClick={closeSetup}
+              className="p-1 rounded-lg hover:bg-[var(--bg-muted)]"
+              style={{ color: "var(--text-muted)" }}
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
           
           <p className="text-sm mb-4" style={{ color: "var(--text-muted)" }}>
@@ -415,6 +412,46 @@ export function MultiSectionCounter({
   );
 
   // Floating Counter Bar
+  if (sections.length === 0) {
+    return (
+      <div className="fixed bottom-0 left-0 right-0 z-50 p-4 print:hidden">
+        <div
+          className="mx-auto max-w-2xl rounded-2xl shadow-2xl border p-4"
+          style={{
+            backgroundColor: "var(--bg-card)",
+            borderColor: "var(--border)",
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  backgroundColor: "var(--bg-muted)",
+                  color: "var(--text-muted)",
+                }}
+              >
+                <Layers className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium" style={{ color: "var(--text)" }}>
+                  No sections set up
+                </p>
+                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  Add sections to track your progress
+                </p>
+              </div>
+            </div>
+            <Button onClick={openSetup}>
+              <Layers className="h-4 w-4 mr-2" />
+              Set Up Sections
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {toast}
