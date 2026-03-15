@@ -8,12 +8,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 const RATE_LIMIT_AUTH_PER_DAY = 20;
 const COOLDOWN_SECONDS = 60; // 1 request per minute, per user
 
-// Extend NextRequest to include waitUntil for Vercel
-interface VercelNextRequest extends NextRequest {
-  waitUntil?: (promise: Promise<unknown>) => void;
-}
-
-export async function POST(request: VercelNextRequest) {
+export async function POST(request: NextRequest) {
   // 1. Verify auth token
   const authHeader = request.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
@@ -177,42 +172,24 @@ export async function POST(request: VercelNextRequest) {
         }
 
         // 7. Update Firestore with completed pattern
-        // Use waitUntil to keep function alive for background Firestore write
-        console.log(`[Generate] Stream ended. waitUntil available: ${!!request.waitUntil}`);
-        console.log(`[Generate] Accumulated: ${accumulatedMarkdown.length} chars, ${chunkCount} chunks`);
+        // CRITICAL: Must await this before closing stream to ensure it completes
+        // Vercel may terminate the function before waitUntil finishes
+        console.log(`[Generate] Starting Firestore save for ${patternId} (${accumulatedMarkdown.length} chars)`);
         
-        const saveToFirestore = async () => {
-          console.log(`[Generate] Starting Firestore save for ${patternId}`);
-          try {
-            const updateData = {
-              status: "complete",
-              "pattern.rawMarkdown": accumulatedMarkdown,
-              title: extractTitle(accumulatedMarkdown) ?? title,
-              updatedAt: FieldValue.serverTimestamp(),
-            };
-            console.log(`[Generate] Updating with title: ${updateData.title}`);
-            await patternRef.update(updateData);
-            console.log(`[Generate] Firestore saved SUCCESS: ${patternId}`);
-          } catch (err) {
-            console.error(`[Generate] Firestore save FAILED:`, err);
-            try {
-              await patternRef.update({ 
-                status: "error", 
-                updatedAt: FieldValue.serverTimestamp() 
-              });
-            } catch (e) {
-              console.error(`[Generate] Failed to mark error status:`, e);
-            }
-          }
-        };
-
-        // Use waitUntil if available (Vercel), otherwise await
-        if (request.waitUntil) {
-          console.log(`[Generate] Using waitUntil for background save`);
-          request.waitUntil(saveToFirestore());
-        } else {
-          console.log(`[Generate] waitUntil not available, awaiting save`);
-          await saveToFirestore();
+        try {
+          await patternRef.update({
+            status: "complete",
+            "pattern.rawMarkdown": accumulatedMarkdown,
+            title: extractTitle(accumulatedMarkdown) ?? title,
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+          console.log(`[Generate] Firestore saved SUCCESS: ${patternId}`);
+        } catch (err) {
+          console.error(`[Generate] Firestore save FAILED:`, err);
+          await patternRef.update({ 
+            status: "error", 
+            updatedAt: FieldValue.serverTimestamp() 
+          }).catch(console.error);
         }
 
         controller.close();
