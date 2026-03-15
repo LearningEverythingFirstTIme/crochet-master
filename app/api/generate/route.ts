@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       try {
         const stream = claude.messages.stream({
           model: "claude-opus-4-5",
-          max_tokens: 4096,
+          max_tokens: 8000,
           system: SYSTEM_PROMPT,
           messages: buildMessages(input),
         });
