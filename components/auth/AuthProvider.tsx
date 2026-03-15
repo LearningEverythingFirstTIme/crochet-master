@@ -8,12 +8,9 @@ import {
 } from "react";
 import {
   signInAnonymously,
-  signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider,
-  linkWithPopup,
-  linkWithRedirect,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
   type User,
   type AuthError,
@@ -25,20 +22,14 @@ interface AuthContextValue {
   loading: boolean;
   isAnonymous: boolean;
   authError: string | null;
-  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   getIdToken: () => Promise<string>;
   clearError: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
-
-// Detect if user is on a mobile device
-function isMobileDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
-}
 
 // Get human-readable error message
 function getAuthErrorMessage(err: AuthError | Error | unknown): string {
@@ -46,26 +37,26 @@ function getAuthErrorMessage(err: AuthError | Error | unknown): string {
   const message = (err as Error)?.message || "";
   
   switch (code) {
-    case "auth/unauthorized-domain":
-      return "This domain is not authorized for sign-in. Please contact support.";
-    case "auth/popup-blocked":
-      return "Sign-in popup was blocked. Please allow popups and try again.";
-    case "auth/popup-closed-by-user":
-      return "Sign-in was cancelled.";
-    case "auth/cancelled-popup-request":
-      return "Sign-in was cancelled.";
-    case "auth/account-exists-with-different-credential":
-      return "An account already exists with this email using a different sign-in method.";
+    case "auth/invalid-email":
+      return "Please enter a valid email address.";
+    case "auth/user-disabled":
+      return "This account has been disabled.";
+    case "auth/user-not-found":
+      return "No account found with this email.";
+    case "auth/wrong-password":
+      return "Incorrect password.";
+    case "auth/email-already-in-use":
+      return "An account already exists with this email.";
+    case "auth/weak-password":
+      return "Password must be at least 6 characters.";
     case "auth/invalid-credential":
-      return "Sign-in failed. Please try again.";
-    case "auth/operation-not-allowed":
-      return "Google sign-in is not enabled. Please contact support.";
-    case "auth/redirect-cancelled-by-user":
-      return "Sign-in was cancelled.";
-    case "auth/redirect-operation-pending":
-      return "Sign-in already in progress.";
+      return "Invalid email or password.";
+    case "auth/too-many-requests":
+      return "Too many failed attempts. Please try again later.";
+    case "auth/network-request-failed":
+      return "Network error. Please check your connection.";
     default:
-      return message || "Sign-in failed. Please try again.";
+      return message || "Authentication failed. Please try again.";
   }
 }
 
@@ -73,113 +64,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [redirectHandled, setRedirectHandled] = useState(false);
 
   useEffect(() => {
     const auth = getFirebaseAuth();
-    let unsubscribe: (() => void) | null = null;
+    console.log("[Auth] Initializing...");
 
-    // Handle redirect result first (for mobile sign-in)
-    // This must complete before setting up onAuthStateChanged to avoid race conditions
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("[Auth] Redirect sign-in successful:", result.user.uid);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        console.log("[Auth] User signed in:", firebaseUser.uid, "Anonymous:", firebaseUser.isAnonymous);
+        setUser(firebaseUser);
+        setLoading(false);
+      } else {
+        console.log("[Auth] No user, creating anonymous session...");
+        // Sign in anonymously on first visit
+        try {
+          const result = await signInAnonymously(auth);
+          console.log("[Auth] Anonymous session created:", result.user.uid);
           setUser(result.user);
-        } else {
-          console.log("[Auth] No redirect result");
+        } catch (err) {
+          console.error("[Auth] Anonymous sign-in failed:", err);
+          setAuthError(getAuthErrorMessage(err));
+        } finally {
+          setLoading(false);
         }
-      })
-      .catch((err) => {
-        console.error("[Auth] Redirect sign-in error:", err);
-        setAuthError(getAuthErrorMessage(err));
-      })
-      .finally(() => {
-        setRedirectHandled(true);
-        // Now set up the auth state listener
-        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-          if (firebaseUser) {
-            console.log("[Auth] User state changed:", firebaseUser.uid, "Anonymous:", firebaseUser.isAnonymous);
-            setUser(firebaseUser);
-            setLoading(false);
-          } else {
-            console.log("[Auth] No user, signing in anonymously");
-            // Sign in anonymously on first visit
-            try {
-              const result = await signInAnonymously(auth);
-              setUser(result.user);
-            } catch (err) {
-              console.error("[Auth] Anonymous sign-in failed:", err);
-              setAuthError(getAuthErrorMessage(err));
-            } finally {
-              setLoading(false);
-            }
-          }
-        });
-      });
+      }
+    });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      unsubscribe();
     };
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithEmail = async (email: string, password: string) => {
     const auth = getFirebaseAuth();
-    const provider = new GoogleAuthProvider();
-    const isMobile = isMobileDevice();
-
-    console.log("[Auth] Starting Google sign-in, mobile:", isMobile);
+    console.log("[Auth] Signing in with email...");
     setAuthError(null);
 
     try {
-      if (user?.isAnonymous) {
-        // Upgrade anonymous account to Google account, preserving data
-        try {
-          if (isMobile) {
-            console.log("[Auth] Using linkWithRedirect for mobile");
-            await linkWithRedirect(user, provider);
-            // Page will redirect, no need to set user
-          } else {
-            console.log("[Auth] Using linkWithPopup for desktop");
-            const result = await linkWithPopup(user, provider);
-            console.log("[Auth] Popup link successful:", result.user.uid);
-            setUser(result.user);
-          }
-        } catch (err: unknown) {
-          const errorCode = (err as AuthError)?.code;
-          console.log("[Auth] Link error:", errorCode);
-          
-          // If account already exists, sign in normally
-          if (errorCode === "auth/credential-already-in-use") {
-            console.log("[Auth] Account exists, signing in normally");
-            if (isMobile) {
-              await signInWithRedirect(auth, provider);
-            } else {
-              const result = await signInWithPopup(auth, provider);
-              setUser(result.user);
-            }
-          } else if (errorCode === "auth/operation-not-supported-in-this-environment") {
-            console.log("[Auth] Popup not supported, falling back to redirect");
-            // Fallback to redirect if popup fails
-            await signInWithRedirect(auth, provider);
-          } else {
-            throw err;
-          }
-        }
-      } else {
-        // Not anonymous - regular sign in
-        if (isMobile) {
-          console.log("[Auth] Using signInWithRedirect for mobile");
-          await signInWithRedirect(auth, provider);
-        } else {
-          console.log("[Auth] Using signInWithPopup for desktop");
-          const result = await signInWithPopup(auth, provider);
-          console.log("[Auth] Popup sign-in successful:", result.user.uid);
-          setUser(result.user);
-        }
-      }
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      console.log("[Auth] Email sign-in successful:", result.user.uid);
+      setUser(result.user);
     } catch (err) {
-      console.error("[Auth] Sign-in error:", err);
+      console.error("[Auth] Email sign-in error:", err);
+      setAuthError(getAuthErrorMessage(err));
+      throw err;
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    const auth = getFirebaseAuth();
+    console.log("[Auth] Creating account with email...");
+    setAuthError(null);
+
+    try {
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      console.log("[Auth] Account created:", result.user.uid);
+      setUser(result.user);
+    } catch (err) {
+      console.error("[Auth] Sign-up error:", err);
+      setAuthError(getAuthErrorMessage(err));
+      throw err;
+    }
+  };
+
+  const logout = async () => {
+    const auth = getFirebaseAuth();
+    console.log("[Auth] Signing out...");
+    
+    try {
+      await signOut(auth);
+      console.log("[Auth] Signed out");
+      // Anonymous sign-in will trigger automatically via onAuthStateChanged
+    } catch (err) {
+      console.error("[Auth] Sign-out error:", err);
       setAuthError(getAuthErrorMessage(err));
       throw err;
     }
@@ -192,8 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const clearError = () => setAuthError(null);
 
-  // Don't render children until we've handled any redirect result
-  if (!redirectHandled) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-[var(--text-muted)]">Loading...</div>
@@ -208,7 +164,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         isAnonymous: user?.isAnonymous ?? true,
         authError,
-        signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
+        logout,
         getIdToken,
         clearError,
       }}

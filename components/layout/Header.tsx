@@ -4,18 +4,22 @@ import Link from "next/link";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { BookOpen, LogIn, User, Scissors } from "lucide-react";
+import { BookOpen, LogIn, User, Scissors, LogOut } from "lucide-react";
 import { useState } from "react";
-import { getFirebaseAuth } from "@/lib/firebase/client";
-import { signOut } from "firebase/auth";
 
 export function Header() {
-  const { user, isAnonymous, signInWithGoogle } = useAuth();
+  const { user, isAnonymous, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut(getFirebaseAuth());
-    setMenuOpen(false);
+    setIsSigningOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsSigningOut(false);
+      setMenuOpen(false);
+    }
   };
 
   return (
@@ -64,67 +68,91 @@ export function Header() {
           {/* Auth */}
           <div className="ml-1">
             {isAnonymous ? (
-              <Button variant="outline" size="sm" onClick={signInWithGoogle}>
-                <LogIn className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Sign in</span>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/patterns">
+                  <LogIn className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Sign in</span>
+                </Link>
               </Button>
             ) : (
-              <div className="relative">
+              <>
+                {/* Desktop: Simple sign out button */}
                 <button
-                  onClick={() => setMenuOpen(!menuOpen)}
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
                   className="
-                    flex items-center gap-1.5 rounded-lg border
+                    hidden sm:flex items-center gap-1.5 rounded-lg border
                     border-[var(--border)] bg-[var(--bg-card)]
-                    px-3 py-1.5 text-sm text-[var(--text)]
-                    hover:bg-[var(--bg-muted)] transition-colors
+                    px-3 py-1.5 text-sm text-[var(--text-muted)]
+                    hover:bg-[var(--bg-muted)] hover:text-[var(--text)]
+                    transition-colors disabled:opacity-50
                   "
                 >
-                  <User className="h-3.5 w-3.5 text-[var(--primary)]" />
-                  <span className="hidden sm:inline max-w-[120px] truncate">
-                    {user?.displayName ?? user?.email ?? "Account"}
-                  </span>
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>{isSigningOut ? "Signing out..." : "Sign out"}</span>
                 </button>
 
-                {menuOpen && (
-                  <>
-                    {/* Backdrop */}
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setMenuOpen(false)}
-                    />
-                    <div
-                      className="
-                        absolute right-0 top-full z-20 mt-1.5 w-44
-                        rounded-xl border border-[var(--border)]
-                        bg-[var(--bg-card)] shadow-lg overflow-hidden
-                      "
-                    >
-                      <Link
-                        href="/patterns"
+                {/* Mobile: User menu */}
+                <div className="relative sm:hidden">
+                  <button
+                    onClick={() => setMenuOpen(!menuOpen)}
+                    className="
+                      flex items-center gap-1.5 rounded-lg border
+                      border-[var(--border)] bg-[var(--bg-card)]
+                      px-3 py-1.5 text-sm text-[var(--text)]
+                      hover:bg-[var(--bg-muted)] transition-colors
+                    "
+                  >
+                    <User className="h-3.5 w-3.5 text-[var(--primary)]" />
+                  </button>
+
+                  {menuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
                         onClick={() => setMenuOpen(false)}
+                      />
+                      <div
                         className="
-                          flex items-center gap-2 w-full px-4 py-2.5
-                          text-sm text-[var(--text)] hover:bg-[var(--bg-muted)]
-                          transition-colors sm:hidden
+                          absolute right-0 top-full z-20 mt-1.5 w-44
+                          rounded-xl border border-[var(--border)]
+                          bg-[var(--bg-card)] shadow-lg overflow-hidden
                         "
                       >
-                        <BookOpen className="h-3.5 w-3.5" />
-                        My Patterns
-                      </Link>
-                      <button
-                        onClick={handleSignOut}
-                        className="
-                          w-full px-4 py-2.5 text-left text-sm
-                          text-[var(--text-muted)] hover:bg-[var(--bg-muted)]
-                          hover:text-[var(--text)] transition-colors
-                        "
-                      >
-                        Sign out
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+                        <div className="px-4 py-2 border-b border-[var(--border)]">
+                          <p className="text-sm font-medium text-[var(--text)] truncate">
+                            {user?.email}
+                          </p>
+                        </div>
+                        <Link
+                          href="/patterns"
+                          onClick={() => setMenuOpen(false)}
+                          className="
+                            flex items-center gap-2 w-full px-4 py-2.5
+                            text-sm text-[var(--text)] hover:bg-[var(--bg-muted)]
+                            transition-colors
+                          "
+                        >
+                          <BookOpen className="h-3.5 w-3.5" />
+                          My Patterns
+                        </Link>
+                        <button
+                          onClick={handleSignOut}
+                          disabled={isSigningOut}
+                          className="
+                            w-full px-4 py-2.5 text-left text-sm
+                            text-[var(--text-muted)] hover:bg-[var(--bg-muted)]
+                            hover:text-[var(--text)] transition-colors
+                            disabled:opacity-50
+                          "
+                        >
+                          {isSigningOut ? "Signing out..." : "Sign out"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>

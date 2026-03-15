@@ -1,8 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/hooks/useAuth";
-import { SignInButton } from "./SignInButton";
-import { User } from "lucide-react";
+import { EmailSignInForm } from "./EmailSignInForm";
 
 interface SignInCardProps {
   className?: string;
@@ -23,20 +22,7 @@ export function SignInCard({ className = "" }: SignInCardProps) {
         ${className}
       `}
     >
-      <div className="flex flex-col items-center text-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--bg-muted)]">
-          <User className="h-6 w-6 text-[var(--primary)]" />
-        </div>
-        
-        <div className="space-y-1">
-          <h3 className="font-semibold text-[var(--text)]">Sign in to save patterns</h3>
-          <p className="text-sm text-[var(--text-muted)]">
-            Sign in with Google to access your pattern library across devices
-          </p>
-        </div>
-
-        <SignInButton size="md" />
-      </div>
+      <EmailSignInForm />
     </div>
   );
 }
