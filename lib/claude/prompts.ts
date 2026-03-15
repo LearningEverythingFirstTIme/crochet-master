@@ -123,7 +123,9 @@ CRITICAL REQUIREMENTS:
 - For amigurumi and 3D items, always start with a magic ring unless otherwise specified
 - For pieces marked "(make 2)", write instructions ONCE — do not duplicate
 - Output ONLY the pattern in markdown. Do not add preamble, sign-offs, or any text outside the pattern structure
-- Do NOT use copyrighted character names (Disney, Nintendo, Marvel, etc.). Use generic descriptions like "small bear" or "forest creature" instead.`;
+- Do NOT use copyrighted character names (Disney, Nintendo, Marvel, etc.). Use generic descriptions like "small bear" or "forest creature" instead.
+- When the pattern is COMPLETELY FINISHED, end with this exact line on its own: **END OF PATTERN**
+- Do not write "END OF PATTERN" until all sections are fully complete`;
 
 export function buildMessages(
   input: GenerateRequest

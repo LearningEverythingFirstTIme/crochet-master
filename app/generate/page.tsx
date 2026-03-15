@@ -12,7 +12,7 @@ import { Wand2 } from "lucide-react";
 
 export default function GeneratePage() {
   const { getIdToken, isAnonymous, signInWithGoogle } = useAuth();
-  const { patternText, patternId, isStreaming, error, generate } =
+  const { patternText, patternId, isStreaming, isContinuing, error, generate } =
     usePatternStream(getIdToken);
 
   const handleSubmit = useCallback(
@@ -94,6 +94,7 @@ export default function GeneratePage() {
         <PatternStream
           text={patternText}
           isStreaming={isStreaming}
+          isContinuing={isContinuing}
           error={error}
         />
       </div>
