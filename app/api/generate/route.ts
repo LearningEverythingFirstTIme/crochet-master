@@ -146,8 +146,14 @@ export async function POST(request: NextRequest) {
 
   // 6. Stream Claude response
   const claude = getClaudeClient();
-  let accumulatedMarkdown = "";
-  let chunkCount = 0;
+  
+  // Use a mutable object to ensure accumulated text is captured correctly
+  const streamState = { 
+    accumulatedMarkdown: "", 
+    chunkCount: 0,
+    patternId,
+    title
+  };
 
   const readableStream = new ReadableStream({
     async start(controller) {
@@ -160,9 +166,9 @@ export async function POST(request: NextRequest) {
         });
 
         for await (const chunk of stream) {
-          chunkCount++;
-          if (chunkCount % 50 === 0) {
-            console.log(`[Generate] Received ${chunkCount} chunks, ${accumulatedMarkdown.length} chars so far`);
+          streamState.chunkCount++;
+          if (streamState.chunkCount % 50 === 0) {
+            console.log(`[Generate] Pattern ${streamState.patternId}: ${streamState.chunkCount} chunks, ${streamState.accumulatedMarkdown.length} chars`);
           }
           if (
             chunk.type === "content_block_delta" &&
@@ -170,29 +176,31 @@ export async function POST(request: NextRequest) {
           ) {
             const text = chunk.delta.text;
             if (text) {
-              accumulatedMarkdown += text;
+              streamState.accumulatedMarkdown += text;
               controller.enqueue(new TextEncoder().encode(text));
             }
           }
         }
 
-        console.log(`[Generate] Stream complete. Total: ${chunkCount} chunks, ${accumulatedMarkdown.length} chars`);
+        console.log(`[Generate] Stream complete for ${streamState.patternId}: ${streamState.chunkCount} chunks, ${streamState.accumulatedMarkdown.length} chars`);
 
         // 7. Update Firestore with completed pattern
         // CRITICAL: Must await this before closing stream to ensure it completes
-        // Vercel may terminate the function before waitUntil finishes
-        console.log(`[Generate] Starting Firestore save for ${patternId} (${accumulatedMarkdown.length} chars)`);
+        console.log(`[Generate] Saving pattern ${streamState.patternId} (${streamState.accumulatedMarkdown.length} chars)`);
         
         try {
+          const extractedTitle = extractTitle(streamState.accumulatedMarkdown);
+          console.log(`[Generate] Extracted title: ${extractedTitle ?? 'none'}, using: ${extractedTitle ?? streamState.title}`);
+          
           await patternRef.update({
             status: "complete",
-            "pattern.rawMarkdown": accumulatedMarkdown,
-            title: extractTitle(accumulatedMarkdown) ?? title,
+            "pattern.rawMarkdown": streamState.accumulatedMarkdown,
+            title: extractedTitle ?? streamState.title,
             updatedAt: FieldValue.serverTimestamp(),
           });
-          console.log(`[Generate] Firestore saved SUCCESS: ${patternId}`);
+          console.log(`[Generate] Firestore saved SUCCESS: ${streamState.patternId}`);
         } catch (err) {
-          console.error(`[Generate] Firestore save FAILED:`, err);
+          console.error(`[Generate] Firestore save FAILED for ${streamState.patternId}:`, err);
           await patternRef.update({ 
             status: "error", 
             updatedAt: FieldValue.serverTimestamp() 
@@ -201,7 +209,7 @@ export async function POST(request: NextRequest) {
 
         controller.close();
       } catch (err) {
-        console.error("Stream error:", err);
+        console.error("[Generate] Stream error:", err);
         controller.error(err);
         patternRef.update({ status: "error", updatedAt: FieldValue.serverTimestamp() }).catch(console.error);
       }
