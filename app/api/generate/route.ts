@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         const stream = claude.messages.stream({
-          model: "claude-sonnet-4-20250514",
+          model: "claude-sonnet-4-6-20250801",
           max_tokens: 8000,
           system: SYSTEM_PROMPT,
           messages: buildMessages(input),
