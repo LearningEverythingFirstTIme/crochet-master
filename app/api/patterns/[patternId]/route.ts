@@ -57,7 +57,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   for (const field of allowedFields) {
     if (field in body) {
-      updates[field] = body[field];
+      // Handle rowProgress - ensure it has updatedAt if it's an object
+      if (field === "rowProgress" && typeof body[field] === "object" && body[field] !== null) {
+        updates[field] = {
+          ...body[field],
+          updatedAt: FieldValue.serverTimestamp(),
+        };
+      } else {
+        updates[field] = body[field];
+      }
     }
   }
 

@@ -40,10 +40,25 @@ export interface PatternData {
   rawMarkdown: string;
 }
 
-export interface RowProgress {
+export interface SectionProgress {
+  id: string;           // unique identifier (slug)
+  name: string;         // display name ("Head", "Body")
+  totalRows: number;    // total rows in this section
+  currentRow: number;   // current progress (0 to totalRows)
+  isComplete: boolean;  // done?
+}
+
+// Legacy RowProgress for migration
+export interface LegacyRowProgress {
   currentRow: number;
   totalRows: number;
   isComplete: boolean;
+  updatedAt: Timestamp;
+}
+
+export interface RowProgress {
+  sections: SectionProgress[];
+  activeSectionId: string;  // which section is currently active
   updatedAt: Timestamp;
 }
 

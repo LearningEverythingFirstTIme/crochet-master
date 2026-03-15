@@ -7,10 +7,10 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PatternSectionViewer } from "@/components/patterns/PatternSectionViewer";
-import { SimpleCounter } from "@/components/counter/SimpleCounter";
+import { MultiSectionCounter } from "@/components/counter/MultiSectionCounter";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useSimpleCounter } from "@/lib/hooks/useSimpleCounter";
-import type { Pattern } from "@/lib/types/pattern";
+import { useMultiSectionCounter } from "@/lib/hooks/useMultiSectionCounter";
+import type { Pattern, RowProgress, LegacyRowProgress } from "@/lib/types/pattern";
 
 export default function PatternDetailPage() {
   const { patternId } = useParams<{ patternId: string }>();
@@ -113,10 +113,10 @@ export default function PatternDetailPage() {
 
   const handlePrint = () => window.print();
 
-  // Counter state management
-  const counter = useSimpleCounter({
+  // Multi-section counter state management
+  const counter = useMultiSectionCounter({
     patternId,
-    initialProgress: pattern?.rowProgress,
+    initialProgress: pattern?.rowProgress as RowProgress | LegacyRowProgress | undefined,
   });
 
   if (loading) {
@@ -210,22 +210,40 @@ export default function PatternDetailPage() {
         />
       </div>
 
-      {/* Floating Counter */}
-      <SimpleCounter
-        currentRow={counter.currentRow}
-        totalRows={counter.totalRows}
-        isComplete={counter.isComplete}
+      {/* Floating Multi-Section Counter */}
+      <MultiSectionCounter
+        sections={counter.sections}
+        activeSectionId={counter.activeSectionId}
+        activeSection={counter.activeSection}
+        totalSections={counter.totalSections}
+        completedSections={counter.completedSections}
+        totalRowsAll={counter.totalRowsAll}
+        currentRowsAll={counter.currentRowsAll}
+        overallProgress={counter.overallProgress}
         isExpanded={counter.isExpanded}
         isLoading={counter.isLoading}
         hasStarted={counter.hasStarted}
-        onIncrement={counter.increment}
-        onDecrement={counter.decrement}
-        onSetRow={counter.setRow}
-        onSetTotal={counter.setTotal}
-        onToggleExpanded={counter.toggleExpanded}
-        onStart={counter.startCounter}
-        onMarkComplete={counter.markComplete}
-        onReset={counter.reset}
+        showSetup={counter.showSetup}
+        showManagement={counter.showManagement}
+        toastMessage={counter.toastMessage}
+        increment={counter.increment}
+        decrement={counter.decrement}
+        setRow={counter.setRow}
+        toggleExpanded={counter.toggleExpanded}
+        addSection={counter.addSection}
+        updateSection={counter.updateSection}
+        deleteSection={counter.deleteSection}
+        reorderSection={counter.reorderSection}
+        setActiveSection={counter.setActiveSection}
+        markSectionComplete={counter.markSectionComplete}
+        markSectionIncomplete={counter.markSectionIncomplete}
+        startCrocheting={counter.startCrocheting}
+        openSetup={counter.openSetup}
+        closeSetup={counter.closeSetup}
+        openManagement={counter.openManagement}
+        closeManagement={counter.closeManagement}
+        clearToast={counter.clearToast}
+        resetAll={counter.resetAll}
       />
     </div>
   );
