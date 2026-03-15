@@ -40,6 +40,13 @@ export interface PatternData {
   rawMarkdown: string;
 }
 
+export interface RowProgress {
+  currentRow: number;
+  totalRows: number;
+  isComplete: boolean;
+  updatedAt: Timestamp;
+}
+
 export interface Pattern {
   id: string;
   uid: string;
@@ -54,6 +61,7 @@ export interface Pattern {
   isPublic: boolean;
   pattern: PatternData | null;
   completedSections: string[];
+  rowProgress?: RowProgress;
 }
 
 export interface PatternSummary {

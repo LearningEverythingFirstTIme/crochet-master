@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (snap.data()?.uid !== uid) return new Response("Forbidden", { status: 403 });
 
   const body = await request.json();
-  const allowedFields = ["title", "isPublic", "completedSections"];
+  const allowedFields = ["title", "isPublic", "completedSections", "rowProgress"];
   const updates: Record<string, unknown> = { updatedAt: FieldValue.serverTimestamp() };
 
   for (const field of allowedFields) {
