@@ -161,15 +161,22 @@ export async function POST(request: NextRequest) {
 
         for await (const chunk of stream) {
           chunkCount++;
+          if (chunkCount % 50 === 0) {
+            console.log(`[Generate] Received ${chunkCount} chunks, ${accumulatedMarkdown.length} chars so far`);
+          }
           if (
             chunk.type === "content_block_delta" &&
             chunk.delta.type === "text_delta"
           ) {
             const text = chunk.delta.text;
-            accumulatedMarkdown += text;
-            controller.enqueue(new TextEncoder().encode(text));
+            if (text) {
+              accumulatedMarkdown += text;
+              controller.enqueue(new TextEncoder().encode(text));
+            }
           }
         }
+
+        console.log(`[Generate] Stream complete. Total: ${chunkCount} chunks, ${accumulatedMarkdown.length} chars`);
 
         // 7. Update Firestore with completed pattern
         // CRITICAL: Must await this before closing stream to ensure it completes
